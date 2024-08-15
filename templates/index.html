@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DL Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div class="container mx-auto max-w-7xl my-24">
+      <h1 class="text-3xl font-bold text-center">DL Search</h1>
+      <form action="">
+        <div class="grid grid-cols-2 border py-4 px-8 rounded-lg my-12">
+          <div class="mb-4 col-span-1 mx-auto">
+            <label for="epic" class="block font-bold my-2 text-gray-700"
+              >Driving Licence No.</label
+            >
+            <input
+              name="dlno"
+              type="text"
+              value="HR-3220140048539"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-64 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            />
+          </div>
+
+          <div class="mb-4 col-span-1 mx-auto">
+            <label for="state" class="block font-bold my-2 text-gray-700"
+              >Date of Birth</label
+            >
+            <input name="dob" value="1995-12-09" type="date" class="bg-gray-50 border
+            border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500
+            focus:border-blue-500 block w-64 p-2.5 dark:bg-gray-700
+            dark:border-gray-600 dark:placeholder-gray-400 dark:text-white
+            dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          </div>
+          </div>  
+        </div>
+
+        <div class="mb-4 my-4 flex items-center justify-center gap-16">
+          <div><img width="200" src="" alt="" /></div>
+          <div>
+            <div>
+              <label
+                for="captchaData"
+                class="block font-bold mb-2 text-gray-700"
+              >
+                Enter captcha
+              </label>
+              <input
+                type="text"
+                name="captchaData"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="my-16 flex justify-center">
+          <button
+            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+          >
+            Submit
+          </button>
+        </div>
+      </form>
+      <div
+        class="result-table flex flex-col gap-12 justify-center items-center w-full my-12"
+      ></div>
+    </div>
+  </body>
+
+  <script>
+    async function showCaptcha() {
+      try {
+        const response = await fetch("/api/get-captcha");
+        if (!response.ok) {
+          throw new Error("Failed to fetch captcha");
+        }
+        const data = await response.json();
+        const img = document.querySelector("img");
+        img.src = data.captcha;
+        img.id = data.id;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function createTable(tableData) {
+      const table = document.createElement("table");
+      table.classList.add("table-auto", "border", "w-full");
+      const headers = tableData.headers
+      const data = tableData.data
+
+      if (headers.length) {
+      const thead = document.createElement("thead");
+      const tr = document.createElement("tr");
+      headers.forEach((header) => {
+        const th = document.createElement("th");
+        th.classList.add("bg-gray-200", "border", "px-4", "py-2");
+        th.textContent = header;
+        tr.appendChild(th);
+      });
+      thead.appendChild(tr);
+      table.appendChild(thead);
+      }
+
+      if (data.length) {
+      const tbody = document.createElement("tbody");
+      data.forEach((row) => {
+        const tr = document.createElement("tr");
+        row.forEach((cell) => {
+        const td = document.createElement("td");
+        td.classList.add("border", "px-4", "py-2");
+        td.textContent = cell;
+        tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      }
+      
+      return table;
+    }
+
+    function getInputs() {
+      const dlno = document.querySelector("input[name=dlno]").value;
+      const dob = document.querySelector("input[name=dob]").value;
+      const captchaData = document.querySelector(
+        "input[name=captchaData]"
+      ).value;
+
+      const sessionId = document.querySelector("img").id;
+      return { dlno, dob, sessionId, captchaData };
+    }
+
+    async function submitForm(e) {
+      e.preventDefault();
+      const inputs = getInputs();
+      try {
+        const response = await fetch("/api/get-vehicle-details", {
+          method: "POST",
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(inputs),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const data = await response.json();
+        if (data.errors) {
+          for (const error of data.errors) {
+            alert(error);
+          }
+          throw new Error("Failed to fetch data");
+        }
+        if (!data.details || !data.details.length) {
+          alert("No data found");
+          throw new Error("Failed to fetch data");
+        }
+        data.details.forEach((table) => {
+          const resultTable = createTable(table);
+          document.querySelector(".result-table").appendChild(resultTable);
+        });
+
+        const resultTable = document.querySelector(".result-table");
+
+        
+
+        console.log(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showCaptcha();
+        const captchaData = (document.querySelector(
+          "input[name=captchaData]"
+        ).value = "");
+      }
+    }
+    document.querySelector("button").addEventListener("click", submitForm);
+    showCaptcha();
+  </script>
+</html>
